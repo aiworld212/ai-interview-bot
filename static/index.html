@@ -1,0 +1,1125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>InterviewAI — Free Edition</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800;900&family=IBM+Plex+Mono:wght@400;500;600&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg:        #f5f0e8;
+      --surface:   #ffffff;
+      --surface2:  #faf7f2;
+      --border:    #e2d9cc;
+      --ink:       #1a1410;
+      --muted:     #8a7d6e;
+      --accent:    #c8522a;
+      --accent2:   #2a6bc8;
+      --accent3:   #2a9b5a;
+      --warn:      #c8952a;
+      --shadow:    rgba(26,20,16,0.08);
+    }
+
+    * { margin:0; padding:0; box-sizing:border-box; }
+
+    body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: 'Manrope', sans-serif;
+      min-height: 100vh;
+    }
+
+    /* ── Grain texture overlay ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.6;
+    }
+
+    /* ── Decorative top bar ── */
+    .topbar {
+      height: 4px;
+      background: linear-gradient(90deg, var(--accent) 0%, var(--warn) 50%, var(--accent2) 100%);
+    }
+
+    .wrapper {
+      position: relative;
+      z-index: 1;
+      max-width: 780px;
+      margin: 0 auto;
+      padding: 48px 24px 100px;
+    }
+
+    /* ── Header ── */
+    header { text-align: center; margin-bottom: 56px; }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--accent);
+      color: #fff;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      padding: 5px 14px;
+      border-radius: 2px;
+      margin-bottom: 24px;
+    }
+    .badge .free-dot {
+      width: 6px; height: 6px;
+      background: #fff;
+      border-radius: 50%;
+      animation: blink 1.5s infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+    h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(44px, 8vw, 76px);
+      font-weight: 900;
+      line-height: 0.95;
+      letter-spacing: -0.03em;
+      color: var(--ink);
+      margin-bottom: 16px;
+    }
+    h1 em {
+      font-style: italic;
+      color: var(--accent);
+    }
+    .sub {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 13px;
+      color: var(--muted);
+      letter-spacing: 0.04em;
+    }
+
+    /* ── Step tracker ── */
+    .step-track {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+      margin-bottom: 48px;
+    }
+    .step-node {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+    .step-circle {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      background: var(--surface);
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      transition: all 0.3s;
+    }
+    .step-node.active .step-circle {
+      border-color: var(--accent);
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 0 0 4px rgba(200,82,42,0.15);
+    }
+    .step-node.done .step-circle {
+      border-color: var(--accent3);
+      background: var(--accent3);
+      color: #fff;
+    }
+    .step-lbl {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-family: 'IBM Plex Mono', monospace;
+    }
+    .step-node.active .step-lbl { color: var(--accent); }
+    .step-node.done .step-lbl { color: var(--accent3); }
+    .step-line {
+      width: 48px; height: 2px;
+      background: var(--border);
+      margin-bottom: 18px;
+    }
+    @media (max-width: 480px) { .step-line { width: 20px; } .step-lbl { display: none; } }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 32px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 12px var(--shadow);
+    }
+
+    .section-label {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .section-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* ── Textarea ── */
+    textarea {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 18px 20px;
+      color: var(--ink);
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 13px;
+      line-height: 1.8;
+      resize: vertical;
+      min-height: 200px;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(200,82,42,0.1);
+    }
+    textarea::placeholder { color: var(--muted); opacity: 0.7; }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 13px 26px;
+      border-radius: 3px;
+      font-family: 'Manrope', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      border: none;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none !important; }
+    .btn-primary {
+      background: var(--ink);
+      color: #fff;
+    }
+    .btn-primary:hover:not(:disabled) {
+      background: var(--accent);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 16px rgba(200,82,42,0.3);
+    }
+    .btn-outline {
+      background: transparent;
+      color: var(--ink);
+      border: 1.5px solid var(--border);
+    }
+    .btn-outline:hover:not(:disabled) {
+      border-color: var(--ink);
+    }
+    .btn-red {
+      background: var(--accent);
+      color: #fff;
+    }
+    .btn-red:hover:not(:disabled) {
+      background: #b34520;
+      transform: translateY(-1px);
+    }
+    .btn-green {
+      background: var(--accent3);
+      color: #fff;
+    }
+    .btn-green:hover:not(:disabled) { background: #228049; }
+
+    /* ── Spinner ── */
+    .spin {
+      width: 16px; height: 16px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: rot 0.7s linear infinite;
+    }
+    @keyframes rot { to { transform: rotate(360deg); } }
+
+    /* ── Question list preview ── */
+    .q-list { display: flex; flex-direction: column; gap: 10px; }
+    .q-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      padding: 16px 18px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--surface2);
+      transition: border-color 0.2s;
+    }
+    .q-row:hover { border-color: var(--muted); }
+    .q-row.active { border-color: var(--accent); background: rgba(200,82,42,0.04); }
+    .q-row.done { border-color: var(--accent3); opacity: 0.65; }
+    .q-num {
+      width: 24px; height: 24px;
+      border-radius: 50%;
+      background: var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      font-weight: 600;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .q-row.active .q-num { background: var(--accent); color: #fff; }
+    .q-row.done .q-num { background: var(--accent3); color: #fff; }
+    .q-text { font-size: 14px; line-height: 1.6; }
+
+    /* ── Progress ── */
+    .prog-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .prog-row span:first-child { font-size: 18px; font-weight: 700; color: var(--ink); }
+    .prog-track { height: 3px; background: var(--border); border-radius: 2px; margin-bottom: 28px; }
+    .prog-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.6s ease; }
+
+    /* ── Current question display ── */
+    .question-display {
+      font-family: 'Playfair Display', serif;
+      font-size: 20px;
+      font-weight: 700;
+      line-height: 1.5;
+      color: var(--ink);
+      padding: 22px 24px;
+      background: var(--surface2);
+      border-left: 4px solid var(--accent);
+      border-radius: 0 4px 4px 0;
+      margin-bottom: 24px;
+    }
+
+    /* ── Audio control ── */
+    .audio-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+    .audio-status {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    /* ── Recording zone ── */
+    .rec-zone {
+      border: 2px dashed var(--border);
+      border-radius: 4px;
+      padding: 32px 20px;
+      text-align: center;
+      margin-bottom: 18px;
+      transition: all 0.3s;
+      background: var(--surface2);
+    }
+    .rec-zone.recording {
+      border-color: var(--accent);
+      background: rgba(200,82,42,0.04);
+      animation: recPulse 2s infinite;
+    }
+    @keyframes recPulse {
+      0%,100% { box-shadow: 0 0 0 0 rgba(200,82,42,0.15); }
+      50% { box-shadow: 0 0 0 10px rgba(200,82,42,0); }
+    }
+    .rec-icon {
+      font-size: 36px;
+      margin-bottom: 12px;
+      display: block;
+    }
+    .rec-timer {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 32px;
+      font-weight: 600;
+      color: var(--accent);
+      margin-bottom: 8px;
+    }
+    .rec-hint {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    /* ── Waveform ── */
+    .waveform {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      height: 36px;
+      margin-bottom: 10px;
+    }
+    .wb {
+      width: 4px;
+      background: var(--accent);
+      border-radius: 2px;
+      height: 6px;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .rec-zone.recording .wb {
+      opacity: 1;
+      animation: wv 0.8s ease-in-out infinite;
+    }
+    .wb:nth-child(1){animation-delay:0s}
+    .wb:nth-child(2){animation-delay:0.1s}
+    .wb:nth-child(3){animation-delay:0.2s}
+    .wb:nth-child(4){animation-delay:0.3s}
+    .wb:nth-child(5){animation-delay:0.4s}
+    .wb:nth-child(6){animation-delay:0.3s}
+    .wb:nth-child(7){animation-delay:0.2s}
+    .wb:nth-child(8){animation-delay:0.1s}
+    .wb:nth-child(9){animation-delay:0s}
+    @keyframes wv { 0%,100%{height:6px} 50%{height:30px} }
+
+    /* ── Transcript ── */
+    .transcript-box {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 13px;
+      line-height: 1.8;
+      color: var(--ink);
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 18px 20px;
+      min-height: 80px;
+      margin-bottom: 18px;
+      white-space: pre-wrap;
+    }
+    .transcript-box.empty { color: var(--muted); font-style: italic; }
+
+    /* ── Feedback ── */
+    .feedback-wrap { display: none; }
+    .feedback-wrap.show { display: block; }
+
+    .score-row {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      padding: 22px 24px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      margin-bottom: 24px;
+    }
+    .score-ring { position: relative; width: 80px; height: 80px; flex-shrink: 0; }
+    .score-ring svg { transform: rotate(-90deg); }
+    .ring-bg { fill: none; stroke: var(--border); stroke-width: 7; }
+    .ring-fill {
+      fill: none;
+      stroke: var(--accent);
+      stroke-width: 7;
+      stroke-linecap: round;
+      stroke-dasharray: 213.6;
+      stroke-dashoffset: 213.6;
+      transition: stroke-dashoffset 1.2s ease;
+    }
+    .score-val {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Playfair Display', serif;
+      font-size: 22px;
+      font-weight: 900;
+    }
+    .score-meta h3 {
+      font-family: 'Playfair Display', serif;
+      font-size: 22px;
+      font-weight: 800;
+      margin-bottom: 6px;
+    }
+    .score-meta p {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .star-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    @media (max-width: 560px) { .star-grid { grid-template-columns: 1fr; } }
+    .star-cell {
+      padding: 14px 16px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--surface2);
+    }
+    .star-title {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    .star-title.S { color: var(--accent); }
+    .star-title.T { color: var(--accent2); }
+    .star-title.A { color: var(--accent3); }
+    .star-title.R { color: var(--warn); }
+    .star-body { font-size: 13px; line-height: 1.6; color: var(--ink); }
+
+    .clarity-block {
+      padding: 16px 20px;
+      border-left: 3px solid var(--warn);
+      background: var(--surface2);
+      border-radius: 0 4px 4px 0;
+      font-size: 14px;
+      line-height: 1.7;
+      margin-bottom: 20px;
+    }
+
+    .tips-wrap { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+    .tip-item {
+      display: flex;
+      gap: 14px;
+      padding: 14px 16px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--surface2);
+    }
+    .tip-n {
+      width: 26px; height: 26px;
+      border-radius: 50%;
+      background: var(--ink);
+      color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+    .tip-text { font-size: 13px; line-height: 1.6; padding-top: 3px; }
+
+    /* ── Final summary ── */
+    #finalSummary { display: none; }
+
+    .avg-big {
+      font-family: 'Playfair Display', serif;
+      font-size: 80px;
+      font-weight: 900;
+      color: var(--accent);
+      line-height: 1;
+      text-align: center;
+      margin-bottom: 6px;
+    }
+    .avg-sub {
+      text-align: center;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 32px;
+    }
+    .sum-rows { display: flex; flex-direction: column; gap: 12px; margin-bottom: 28px; }
+    .sum-row { display: flex; align-items: center; gap: 14px; }
+    .sum-qlbl {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+      color: var(--muted);
+      width: 80px;
+      flex-shrink: 0;
+    }
+    .sum-track { flex: 1; height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
+    .sum-fill { height: 100%; background: var(--accent); border-radius: 4px; transition: width 1s ease; }
+    .sum-score {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 14px;
+      font-weight: 600;
+      width: 40px;
+      text-align: right;
+    }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed;
+      bottom: 28px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: var(--ink);
+      color: #fff;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 13px;
+      padding: 12px 22px;
+      border-radius: 3px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+      transition: transform 0.3s;
+      z-index: 999;
+      white-space: nowrap;
+    }
+    #toast.show { transform: translateX(-50%) translateY(0); }
+    #toast.ok { background: var(--accent3); }
+    #toast.err { background: var(--accent); }
+
+    /* ── Utility ── */
+    .hidden { display: none !important; }
+    .flex { display: flex; }
+    .gap { gap: 12px; }
+    .mt { margin-top: 16px; }
+    .right { justify-content: flex-end; }
+    audio { display: none; }
+
+    /* ── Divider ── */
+    hr { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
+
+    /* ── Key notice ── */
+    .key-notice {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 14px 18px;
+      background: rgba(200,82,42,0.06);
+      border: 1px solid rgba(200,82,42,0.2);
+      border-radius: 4px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 20px;
+      line-height: 1.7;
+    }
+    .key-notice strong { color: var(--accent); }
+  </style>
+</head>
+<body>
+<div class="topbar"></div>
+<audio id="player"></audio>
+<div id="toast"></div>
+
+<div class="wrapper">
+
+  <!-- HEADER -->
+  <header>
+    <div class="badge"><div class="free-dot"></div> 100% Free — Google AI Studio</div>
+    <h1>Interview<br><em>Warm-Up</em></h1>
+    <p class="sub">gemini · gtts · speech recognition · star feedback</p>
+  </header>
+
+  <!-- STEP TRACKER -->
+  <div class="step-track">
+    <div class="step-node active" id="sn1">
+      <div class="step-circle">1</div>
+      <div class="step-lbl">Profile</div>
+    </div>
+    <div class="step-line"></div>
+    <div class="step-node" id="sn2">
+      <div class="step-circle">2</div>
+      <div class="step-lbl">Questions</div>
+    </div>
+    <div class="step-line"></div>
+    <div class="step-node" id="sn3">
+      <div class="step-circle">3</div>
+      <div class="step-lbl">Interview</div>
+    </div>
+    <div class="step-line"></div>
+    <div class="step-node" id="sn4">
+      <div class="step-circle">4</div>
+      <div class="step-lbl">Results</div>
+    </div>
+  </div>
+
+  <!-- ══════════════ PHASE 1: Profile ══════════════ -->
+  <div id="phaseProfile">
+    <div class="card">
+      <div class="section-label">Your Candidate Profile</div>
+      <div class="key-notice">
+        ℹ️ Make sure your server is running with <strong>GEMINI_API_KEY</strong> set.
+        Get a free key at <strong>aistudio.google.com</strong> — no credit card needed.
+      </div>
+      <textarea id="profileInput" placeholder="Paste your bio, resume summary, or project list here...
+
+Example:
+• Final-year CS student at XYZ University
+• Built a stock price prediction model using LSTM neural networks
+• Led a team of 4 to build a React + Node.js food delivery app
+• Missed a sprint deadline when our payment API broke 2 days before launch
+• Interned at a startup doing Python/FastAPI backend development"></textarea>
+      <div class="flex right mt">
+        <button class="btn btn-primary" id="btnGenerate">
+          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          Generate My 5 Questions
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════ PHASE 2: Questions Preview ══════════════ -->
+  <div id="phaseQuestions" class="hidden">
+    <div class="card">
+      <div class="section-label">Your Personalized Questions</div>
+      <div class="q-list" id="qList"></div>
+      <hr/>
+      <div class="flex gap" style="justify-content:flex-end;">
+        <button class="btn btn-outline" id="btnRegen">↺ Regenerate</button>
+        <button class="btn btn-primary" id="btnBegin">
+          <svg width="13" height="13" fill="currentColor" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          Begin Interview
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════ PHASE 3: Interview ══════════════ -->
+  <div id="phaseInterview" class="hidden">
+
+    <div class="prog-row">
+      <span id="qNumBig">Q1</span>
+      <span id="progPct">0% done</span>
+    </div>
+    <div class="prog-track">
+      <div class="prog-fill" id="progFill" style="width:0%"></div>
+    </div>
+
+    <!-- Current Question -->
+    <div class="card">
+      <div class="section-label">Question</div>
+      <div class="question-display" id="qDisplay">Loading...</div>
+      <div class="audio-row">
+        <button class="btn btn-outline" id="btnPlay">
+          <svg width="12" height="12" fill="currentColor" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          Play Audio
+        </button>
+        <span class="audio-status" id="audioStat">Press play to hear the question</span>
+      </div>
+    </div>
+
+    <!-- Record Answer -->
+    <div class="card">
+      <div class="section-label">Your Answer</div>
+
+      <div class="rec-zone" id="recZone">
+        <div class="waveform">
+          <div class="wb"></div><div class="wb"></div><div class="wb"></div>
+          <div class="wb"></div><div class="wb"></div><div class="wb"></div>
+          <div class="wb"></div><div class="wb"></div><div class="wb"></div>
+        </div>
+        <span class="rec-icon">🎙️</span>
+        <div class="rec-timer" id="recTimer">00:00</div>
+        <div class="rec-hint" id="recHint">Click "Start Recording" and speak your answer</div>
+      </div>
+
+      <div class="flex gap" style="margin-bottom:22px; flex-wrap:wrap;">
+        <button class="btn btn-red" id="btnRec">🎙️ Start Recording</button>
+        <button class="btn btn-outline hidden" id="btnStop">⏹ Stop</button>
+      </div>
+
+      <div class="section-label">Transcription</div>
+      <div class="transcript-box empty" id="txBox">Your spoken answer will appear here after recording...</div>
+
+      <div class="flex gap mt" style="flex-wrap:wrap;">
+        <button class="btn btn-green hidden" id="btnFeedback">🧠 Analyze Answer</button>
+        <button class="btn btn-outline hidden" id="btnSkip">Skip →</button>
+      </div>
+    </div>
+
+    <!-- Feedback Panel -->
+    <div class="card feedback-wrap" id="fbPanel">
+      <div class="section-label">AI Feedback</div>
+
+      <!-- Score -->
+      <div class="score-row">
+        <div class="score-ring">
+          <svg width="80" height="80" viewBox="0 0 80 80">
+            <circle class="ring-bg" cx="40" cy="40" r="34"/>
+            <circle class="ring-fill" id="ringFill" cx="40" cy="40" r="34"/>
+          </svg>
+          <div class="score-val" id="scoreVal">—</div>
+        </div>
+        <div class="score-meta">
+          <h3 id="scoreHead">—</h3>
+          <p id="scoreSummary">—</p>
+        </div>
+      </div>
+
+      <!-- STAR -->
+      <div class="section-label">STAR Breakdown</div>
+      <div class="star-grid">
+        <div class="star-cell">
+          <div class="star-title S">📍 Situation</div>
+          <div class="star-body" id="stS">—</div>
+        </div>
+        <div class="star-cell">
+          <div class="star-title T">🎯 Task</div>
+          <div class="star-body" id="stT">—</div>
+        </div>
+        <div class="star-cell">
+          <div class="star-title A">⚡ Action</div>
+          <div class="star-body" id="stA">—</div>
+        </div>
+        <div class="star-cell">
+          <div class="star-title R">✅ Result</div>
+          <div class="star-body" id="stR">—</div>
+        </div>
+      </div>
+
+      <!-- Clarity -->
+      <div class="section-label">Clarity & Tone</div>
+      <div class="clarity-block" id="clarityBlock">—</div>
+
+      <!-- Tips -->
+      <div class="section-label">Improvement Tips</div>
+      <div class="tips-wrap" id="tipsWrap"></div>
+
+      <div class="flex right">
+        <button class="btn btn-primary" id="btnNext">Next Question →</button>
+      </div>
+    </div>
+
+  </div><!-- /phaseInterview -->
+
+  <!-- ══════════════ PHASE 4: Final Summary ══════════════ -->
+  <div id="finalSummary">
+    <div class="card">
+      <div class="section-label">Session Complete</div>
+      <div class="avg-big" id="avgBig">—</div>
+      <div class="avg-sub">Average Score / 10</div>
+      <div class="section-label">Per-Question Scores</div>
+      <div class="sum-rows" id="sumRows"></div>
+      <hr/>
+      <div class="flex gap" style="justify-content:center; flex-wrap:wrap;">
+        <button class="btn btn-outline" onclick="location.reload()">↺ Start Over</button>
+        <button class="btn btn-primary" id="btnDownload">⬇ Download Report</button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /wrapper -->
+
+<script>
+// ═══════════ STATE ═══════════
+const S = {
+  profile:'', questions:[], idx:0, results:[],
+  recorder:null, chunks:[], recInterval:null, recSecs:0,
+  transcript:'', recording:false
+};
+
+// ═══════════ DOM ═══════════
+const $  = id => document.getElementById(id);
+const player = $('player');
+
+// ═══════════ TOAST ═══════════
+function toast(msg, type='') {
+  const el = $('toast');
+  el.textContent = msg;
+  el.className = 'show ' + type;
+  clearTimeout(toast.t);
+  toast.t = setTimeout(() => el.className = '', 3200);
+}
+
+// ═══════════ STEPS ═══════════
+function setStep(n) {
+  [1,2,3,4].forEach(i => {
+    const el = $(`sn${i}`);
+    el.className = 'step-node' + (i < n ? ' done' : i === n ? ' active' : '');
+  });
+}
+
+// ═══════════ PHASES ═══════════
+function show(phase) {
+  ['phaseProfile','phaseQuestions','phaseInterview','finalSummary'].forEach(id => {
+    const el = $(id);
+    el.classList.add('hidden');
+    el.style.display = '';
+  });
+  if (phase === 'final') {
+    $('finalSummary').style.display = 'block';
+    $('finalSummary').classList.remove('hidden');
+  } else {
+    $(`phase${phase}`).classList.remove('hidden');
+  }
+}
+
+// ═══════════ GENERATE QUESTIONS ═══════════
+$('btnGenerate').addEventListener('click', async () => {
+  const profile = $('profileInput').value.trim();
+  if (!profile) { toast('Please enter your profile first', 'err'); return; }
+  S.profile = profile;
+
+  const btn = $('btnGenerate');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spin"></div> Generating with Gemini...';
+
+  try {
+    const res = await fetch('/api/generate-questions', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({profile})
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    S.questions = data.questions;
+    renderQList();
+    show('Questions');
+    setStep(2);
+    toast('5 questions ready!', 'ok');
+  } catch(e) {
+    toast(e.message, 'err');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg> Generate My 5 Questions';
+  }
+});
+
+$('btnRegen').addEventListener('click', () => { show('Profile'); setStep(1); });
+
+function renderQList() {
+  $('qList').innerHTML = S.questions.map((q,i) =>
+    `<div class="q-row"><div class="q-num">${i+1}</div><div class="q-text">${q.question}</div></div>`
+  ).join('');
+}
+
+// ═══════════ BEGIN INTERVIEW ═══════════
+$('btnBegin').addEventListener('click', () => {
+  S.idx = 0; S.results = [];
+  show('Interview'); setStep(3);
+  loadQ(0);
+});
+
+function loadQ(i) {
+  const q = S.questions[i];
+  $('qNumBig').textContent = `Q${i+1}`;
+  const pct = Math.round(i / S.questions.length * 100);
+  $('progFill').style.width = pct + '%';
+  $('progPct').textContent = pct + '% done';
+  $('qDisplay').textContent = q.question;
+  $('txBox').textContent = 'Your spoken answer will appear here after recording...';
+  $('txBox').className = 'transcript-box empty';
+  S.transcript = '';
+  $('fbPanel').classList.remove('show');
+  $('btnFeedback').classList.add('hidden');
+  $('btnSkip').classList.add('hidden');
+  $('btnRec').classList.remove('hidden');
+  $('btnStop').classList.add('hidden');
+  $('recTimer').textContent = '00:00';
+  $('recHint').textContent = 'Click "Start Recording" and speak your answer';
+  $('recZone').classList.remove('recording');
+  $('audioStat').textContent = 'Press play to hear the question';
+  setTimeout(() => playQ(), 600);
+}
+
+// ═══════════ TTS PLAYBACK ═══════════
+$('btnPlay').addEventListener('click', playQ);
+function playQ() {
+  const q = S.questions[S.idx];
+  if (!q?.audio_b64) return;
+  player.src = 'data:audio/mp3;base64,' + q.audio_b64;
+  player.play();
+  $('audioStat').textContent = '🔊 Playing...';
+  player.onended = () => $('audioStat').textContent = '✅ Finished';
+}
+
+// ═══════════ RECORDING ═══════════
+$('btnRec').addEventListener('click', startRec);
+$('btnStop').addEventListener('click', stopRec);
+
+async function startRec() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({audio:true});
+    S.chunks = [];
+    S.recorder = new MediaRecorder(stream, {mimeType:'audio/webm'});
+    S.recorder.ondataavailable = e => { if(e.data.size > 0) S.chunks.push(e.data); };
+    S.recorder.onstop = onRecStop;
+    S.recorder.start(200);
+    S.recording = true; S.recSecs = 0;
+    $('recZone').classList.add('recording');
+    $('recHint').textContent = 'Recording... speak your answer clearly!';
+    $('btnRec').classList.add('hidden');
+    $('btnStop').classList.remove('hidden');
+    S.recInterval = setInterval(() => {
+      S.recSecs++;
+      const m = String(Math.floor(S.recSecs/60)).padStart(2,'0');
+      const s = String(S.recSecs%60).padStart(2,'0');
+      $('recTimer').textContent = `${m}:${s}`;
+      if (S.recSecs >= 120) stopRec();
+    }, 1000);
+  } catch(e) {
+    toast('Microphone access denied. Allow mic permission in browser.', 'err');
+  }
+}
+
+function stopRec() {
+  if (!S.recorder) return;
+  clearInterval(S.recInterval);
+  S.recorder.stop();
+  S.recorder.stream.getTracks().forEach(t => t.stop());
+  S.recording = false;
+  $('recZone').classList.remove('recording');
+  $('btnStop').classList.add('hidden');
+  $('btnRec').classList.remove('hidden');
+  $('recHint').textContent = 'Processing your recording...';
+}
+
+async function onRecStop() {
+  const blob = new Blob(S.chunks, {type:'audio/webm'});
+  $('txBox').className = 'transcript-box';
+  $('txBox').textContent = '🔄 Transcribing with Google Speech Recognition...';
+
+  const form = new FormData();
+  form.append('audio', blob, 'answer.webm');
+
+  try {
+    const res = await fetch('/api/transcribe', {method:'POST', body:form});
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    S.transcript = data.transcript;
+    $('txBox').textContent = S.transcript || '[No speech detected]';
+    $('txBox').className = 'transcript-box';
+    $('btnFeedback').classList.remove('hidden');
+    $('btnSkip').classList.remove('hidden');
+    toast('Transcription complete!', 'ok');
+  } catch(e) {
+    $('txBox').textContent = 'Transcription failed: ' + e.message;
+    $('btnSkip').classList.remove('hidden');
+    toast('Transcription failed', 'err');
+  }
+
+  $('recHint').textContent = 'Click "Start Recording" and speak your answer';
+}
+
+// ═══════════ FEEDBACK ═══════════
+$('btnFeedback').addEventListener('click', async () => {
+  if (!S.transcript) { toast('No transcript yet', 'err'); return; }
+  const btn = $('btnFeedback');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spin"></div> Analyzing with Gemini...';
+
+  try {
+    const res = await fetch('/api/feedback', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({question: S.questions[S.idx].question, transcript: S.transcript})
+    });
+    const fb = await res.json();
+    if (!res.ok) throw new Error(fb.error);
+    S.results.push({question: S.questions[S.idx].question, transcript: S.transcript, feedback: fb});
+    renderFeedback(fb);
+    $('fbPanel').classList.add('show');
+    $('btnFeedback').classList.add('hidden');
+    $('btnSkip').classList.add('hidden');
+    $('fbPanel').scrollIntoView({behavior:'smooth', block:'start'});
+  } catch(e) {
+    toast(e.message, 'err');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '🧠 Analyze Answer';
+  }
+});
+
+function renderFeedback(fb) {
+  const sc = fb.score;
+  const circ = 213.6;
+  const offset = circ - (sc / 10) * circ;
+  const fill = $('ringFill');
+  fill.style.strokeDashoffset = circ;
+  setTimeout(() => { fill.style.strokeDashoffset = offset; }, 60);
+  const col = sc >= 8 ? '#2a9b5a' : sc >= 6 ? '#c8952a' : '#c8522a';
+  fill.style.stroke = col;
+  $('scoreVal').textContent = sc;
+  $('scoreVal').style.color = col;
+
+  const heads = {10:'Exceptional!',9:'Outstanding!',8:'Excellent!',7:'Great Job!',
+    6:'Good Effort',5:'Fair',4:'Needs Work',3:'Keep Practicing',2:'Early Stage',1:'Just Starting'};
+  $('scoreHead').textContent = heads[sc] || `Score: ${sc}/10`;
+  $('scoreSummary').textContent = fb.overall_summary;
+  $('stS').textContent = fb.star_breakdown.situation;
+  $('stT').textContent = fb.star_breakdown.task;
+  $('stA').textContent = fb.star_breakdown.action;
+  $('stR').textContent = fb.star_breakdown.result;
+  $('clarityBlock').textContent = fb.clarity_tone;
+  $('tipsWrap').innerHTML = fb.tips.map((t,i) =>
+    `<div class="tip-item"><div class="tip-n">${i+1}</div><div class="tip-text">${t}</div></div>`
+  ).join('');
+
+  const last = S.idx >= S.questions.length - 1;
+  $('btnNext').textContent = last ? '🏁 View Final Results' : 'Next Question →';
+}
+
+// ═══════════ NAVIGATION ═══════════
+$('btnNext').addEventListener('click', advance);
+$('btnSkip').addEventListener('click', () => {
+  S.results.push({question: S.questions[S.idx].question, transcript: '[skipped]',
+    feedback:{score:0, star_breakdown:{situation:'Skipped',task:'Skipped',action:'Skipped',result:'Skipped'},
+    clarity_tone:'Skipped', tips:['Try this question again','Practice out loud'], overall_summary:'Skipped.'}});
+  advance();
+});
+
+function advance() {
+  const next = S.idx + 1;
+  if (next >= S.questions.length) { showFinal(); }
+  else { S.idx = next; loadQ(next); window.scrollTo({top:0,behavior:'smooth'}); }
+}
+
+// ═══════════ FINAL SUMMARY ═══════════
+function showFinal() {
+  show('final'); setStep(4);
+  const scored = S.results.filter(r => r.feedback.score > 0);
+  const avg = scored.length ? scored.reduce((a,r)=>a+r.feedback.score,0)/scored.length : 0;
+  $('avgBig').textContent = avg.toFixed(1);
+  $('sumRows').innerHTML = S.results.map((r,i) => {
+    const s = r.feedback.score;
+    return `<div class="sum-row">
+      <div class="sum-qlbl">Question ${i+1}</div>
+      <div class="sum-track"><div class="sum-fill" style="width:${s*10}%"></div></div>
+      <div class="sum-score">${s}/10</div>
+    </div>`;
+  }).join('');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// ═══════════ DOWNLOAD REPORT ═══════════
+$('btnDownload').addEventListener('click', () => {
+  const scored = S.results.filter(r=>r.feedback.score>0);
+  const avg = scored.length ? scored.reduce((a,r)=>a+r.feedback.score,0)/scored.length : 0;
+  const lines = ['AI INTERVIEW WARM-UP — SESSION REPORT (Free Edition)', '='.repeat(60),'',
+    `Average Score: ${avg.toFixed(1)} / 10`, `Questions: ${S.results.length}`, ''];
+  S.results.forEach((r,i) => {
+    lines.push(`Q${i+1}: ${r.question}`, `Score: ${r.feedback.score}/10`,
+      `Transcript: ${r.transcript}`,
+      `Situation: ${r.feedback.star_breakdown.situation}`,
+      `Task: ${r.feedback.star_breakdown.task}`,
+      `Action: ${r.feedback.star_breakdown.action}`,
+      `Result: ${r.feedback.star_breakdown.result}`,
+      `Clarity: ${r.feedback.clarity_tone}`,
+      `Tip 1: ${r.feedback.tips[0]}`, `Tip 2: ${r.feedback.tips[1]}`,
+      `Summary: ${r.feedback.overall_summary}`, '-'.repeat(60), '');
+  });
+  const blob = new Blob([lines.join('\n')], {type:'text/plain'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'interview_report.txt';
+  a.click();
+  toast('Report downloaded!', 'ok');
+});
+</script>
+</body>
+</html>
