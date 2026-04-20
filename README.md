@@ -27,7 +27,7 @@ pip install -r requirements.txt
 Go to https://console.groq.com and create a free API key
 
 ### 3. Set API key
-$env:GROQ_API_KEY="your-key-here"
+$env:GROQ_API_KEY="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"
 
 ### 4. Run the app
 python app.py
