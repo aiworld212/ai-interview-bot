@@ -44,5 +44,5 @@ http://localhost:5000
 - static/index.html - Web interface
 
 ## 👨‍💻 Built By
-BSc IT Third Year Student
+Yadav Sumit
 Project: AI Interview Voice Bot
