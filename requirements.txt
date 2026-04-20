@@ -1,0 +1,22 @@
+# AI Interview Voice Bot — FREE Stack Dependencies
+# NO paid API needed — just a free Gemini key from aistudio.google.com
+
+# ── AI / LLM (Free Gemini API) ──────────────────────────
+google-generativeai>=0.5.0
+
+# ── Text-to-Speech (Free, no key needed) ────────────────
+gTTS>=2.5.0
+
+# ── Speech Recognition (Free Google Speech API) ─────────
+SpeechRecognition>=3.10.0
+
+# ── Web Server ───────────────────────────────────────────
+flask>=3.0.0
+flask-cors>=4.0.0
+
+# ── Audio Playback (CLI only) ────────────────────────────
+playsound>=1.3.0
+
+# ── PyAudio (for microphone in CLI mode) ─────────────────
+# Install separately — see README for OS-specific instructions
+# pip install pyaudio
